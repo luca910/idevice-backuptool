@@ -33,4 +33,4 @@ RUN git clone https://github.com/libimobiledevice/libimobiledevice.git \
 
 # Start usbmuxd with network discovery enabled (-n)
 # We run it in the foreground (-f) to keep the container alive
-CMD ["usbmuxd", "-f", "-v", "-n","&&","tail","-f","/dev/null"]
+CMD ["usbmuxd", "-f", "-v", "-u", "0","&&","tail","-f","/dev/null"]
