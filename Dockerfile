@@ -19,7 +19,7 @@ RUN apt update && apt install -y \
     libavahi-client-dev \
     libudev-dev \
     libdbus-1-dev \
-    avahi-utils \
+    avahi-utils
     
 
 RUN apt-get install \
