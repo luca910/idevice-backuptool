@@ -1,101 +1,178 @@
+#!/usr/bin/env python3
+
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlparse, parse_qs
+import json
 import subprocess
 import threading
 import time
-import sys
 
 HOST = "10.110.10.45"
+PORT = 5000
 
-USBMUXD_CMD = [
-    "usbmuxd",
-    "-c",
-    HOST,
-    "--pair-record-id",
-    "",
-    "-d"
-]
+USBMUXD_PROCESS = None
+
+
+def stream_output(pipe):
+    """
+    Forward usbmuxd output to main terminal.
+    """
+    for line in iter(pipe.readline, ""):
+        print(f"[usbmuxd] {line}", end="")
 
 
 def kill_existing_usbmuxd():
+    """
+    Kill any existing usbmuxd processes.
+    """
     subprocess.run(
         ["pkill", "-f", "usbmuxd"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         check=False,
     )
-    print("[+] Killed existing usbmuxd instances")
 
 
-def stream_output(pipe):
-    """
-    Forward usbmuxd output to the main terminal.
-    """
-    for line in iter(pipe.readline, ""):
-        print(f"[usbmuxd] {line}", end="")
+class RequestHandler(BaseHTTPRequestHandler):
 
+    def send_json(self, data, status=200):
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode())
 
-def start_usbmuxd():
-    print(f"[+] Starting usbmuxd -> {HOST}")
+    def do_GET(self):
+        global USBMUXD_PROCESS
 
-    process = subprocess.Popen(
-        USBMUXD_CMD,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-    )
+        parsed = urlparse(self.path)
 
-    threading.Thread(
-        target=stream_output,
-        args=(process.stdout,),
-        daemon=True,
-    ).start()
+        #
+        # START USBMUXD
+        #
+        if parsed.path == "/start":
 
-    return process
+            query = parse_qs(parsed.query)
+            pair_record_id = query.get("id", [""])[0]
 
+            if USBMUXD_PROCESS and USBMUXD_PROCESS.poll() is None:
+                return self.send_json({
+                    "success": False,
+                    "message": "usbmuxd already running"
+                }, 400)
 
-def run_idevice_id():
-    print("[+] Running idevice_id -n")
+            kill_existing_usbmuxd()
 
-    result = subprocess.run(
-        ["idevice_id", "-n"],
-        capture_output=True,
-        text=True,
-    )
+            cmd = [
+                "usbmuxd",
+                "-c",
+                HOST,
+                "--pair-record-id",
+                pair_record_id,
+                "-d"
+            ]
 
-    if result.stdout.strip():
-        print("[+] Device(s) found:")
-        print(result.stdout.strip())
-        return True
+            print(f"[+] Starting usbmuxd with pair-record-id='{pair_record_id}'")
 
-    print("[!] No devices found")
+            USBMUXD_PROCESS = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
 
-    if result.stderr.strip():
-        print(result.stderr.strip())
+            threading.Thread(
+                target=stream_output,
+                args=(USBMUXD_PROCESS.stdout,),
+                daemon=True,
+            ).start()
 
-    return False
+            time.sleep(2)
 
+            return self.send_json({
+                "success": True,
+                "pid": USBMUXD_PROCESS.pid,
+                "pair_record_id": pair_record_id,
+            })
 
-def main():
-    kill_existing_usbmuxd()
+        #
+        # STOP USBMUXD
+        #
+        elif parsed.path == "/stop":
 
-    process = start_usbmuxd()
+            if USBMUXD_PROCESS and USBMUXD_PROCESS.poll() is None:
 
-    # Let usbmuxd initialize
-    time.sleep(2)
+                print("[+] Stopping usbmuxd")
 
-    success = run_idevice_id()
+                USBMUXD_PROCESS.terminate()
+                USBMUXD_PROCESS.wait(timeout=5)
 
-    print("[+] usbmuxd is still running in background")
+                USBMUXD_PROCESS = None
 
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\n[+] Stopping usbmuxd")
-        process.terminate()
+                return self.send_json({
+                    "success": True,
+                    "message": "usbmuxd stopped"
+                })
 
-    sys.exit(0 if success else 1)
+            return self.send_json({
+                "success": False,
+                "message": "usbmuxd not running"
+            }, 400)
+
+        #
+        # STATUS
+        #
+        elif parsed.path == "/status":
+
+            running = (
+                USBMUXD_PROCESS is not None
+                and USBMUXD_PROCESS.poll() is None
+            )
+
+            return self.send_json({
+                "running": running
+            })
+
+        #
+        # idevice_id -n
+        #
+        elif parsed.path == "/idevice_id":
+
+            result = subprocess.run(
+                ["idevice_id", "-n"],
+                capture_output=True,
+                text=True,
+            )
+
+            devices = [
+                line.strip()
+                for line in result.stdout.splitlines()
+                if line.strip()
+            ]
+
+            return self.send_json({
+                "success": result.returncode == 0,
+                "devices": devices,
+                "stderr": result.stderr.strip(),
+            })
+
+        #
+        # UNKNOWN ROUTE
+        #
+        self.send_json({
+            "error": "Not found"
+        }, 404)
 
 
 if __name__ == "__main__":
-    main()
+
+    print(f"[+] API server listening on port {PORT}")
+
+    server = HTTPServer(("0.0.0.0", PORT), RequestHandler)
+
+    try:
+        server.serve_forever()
+
+    except KeyboardInterrupt:
+        print("\n[+] Shutting down server")
+        server.server_close()
