@@ -2,6 +2,10 @@
 
 A Docker-based tool for creating iOS device backups using `libimobiledevice` and `usbmuxd2`.
 
+## Core Tools
+- [libimobiledevice](https://github.com/libimobiledevice/libimobiledevice)
+- [usbmuxd2](https://github.com/usbmuxd2/usbmuxd2)
+
 ## Overview
 
 This tool allows you to perform backups of iOS devices from within a Docker container. Backups can be copied directly to the iTunes backup folder to restore an iDevice. `libimobiledevice` also supports direct restoration (though this hasn't been thoroughly tested yet).
@@ -83,7 +87,7 @@ idevicebackup2 backup /backup-path
 
 ## Restoring Backups
 
-Backups can be moved to the iTunes backup folder and restored through iTunes. Direct restoration using `libimobiledevice` is also possible, though the exact procedure is still being evaluated.
+Backups can be moved to the iTunes backup folder and restored through iTunes. Direct restoration using `libimobiledevice` is also possible, haven't tried it tho.
 
 ## Future Enhancements
 
@@ -108,3 +112,6 @@ This project aims to streamline the backup process through:
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
+
+
+
