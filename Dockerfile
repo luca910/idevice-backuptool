@@ -22,7 +22,7 @@ RUN apt update && apt install -y \
     avahi-utils
     
 
-RUN apt-get install \
+RUN apt-get install -y\
 	build-essential \
 	pkg-config \
 	checkinstall \
