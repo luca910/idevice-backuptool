@@ -7,7 +7,7 @@ RUN apt update && apt install -y \
     build-essential pkg-config git autoconf automake libtool \
     libplist-dev libssl-dev libusb-1.0-0-dev libavahi-client-dev \
     libavahi-common-dev zlib1g-dev libcurl4-openssl-dev python3-dev \
-    clang libc++-dev libc++abi-dev \
+    clang libc++-dev libc++abi-dev avahi-daemon avahi-utils libavahi-client3\
     && rm -rf /var/lib/apt/lists/*
 
 # Global setting: Use Clang for EVERYTHING to avoid "undefined reference" errors
@@ -38,15 +38,16 @@ RUN git clone https://github.com/libimobiledevice/libimobiledevice.git \
     && cd libimobiledevice && ./autogen.sh --prefix=/usr && make install && ldconfig
 
 # 7. Build usbmuxd2 (With Clang)
-RUN git clone https://github.com/tihmstar/usbmuxd2.git \
-    && cd usbmuxd2 \
-    && git submodule update --init --recursive \
-    && ./autogen.sh --prefix=/usr \
-    && make -j$(nproc) \
+RUN git clone https://github.com/fosple/usbmuxd2.git \
+    && cd /app/src/usbmuxd2 \
+    && ./autogen.sh \
+    && ./configure CC=clang CXX=clang++ \
+    && make \
     && make install
+
 
 RUN rm -rf /tmp/*
 
 ENV DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
 
-CMD ["usbmuxd2", "-v"]
+CMD ["usbmuxd", "-v"]
