@@ -1,30 +1,23 @@
-#!/usr/bin/env python3
-
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 import json
 import subprocess
 import threading
 import time
+import os
 
-HOST = "10.110.10.45"
 PORT = 5000
+BACKUP_DIR = "/mnt/backups"
 
 USBMUXD_PROCESS = None
 
 
-def stream_output(pipe):
-    """
-    Forward usbmuxd output to main terminal.
-    """
+def stream_output(pipe, prefix="[proc]"):
     for line in iter(pipe.readline, ""):
-        print(f"[usbmuxd] {line}", end="")
+        print(f"{prefix} {line}", end="")
 
 
 def kill_existing_usbmuxd():
-    """
-    Kill any existing usbmuxd processes.
-    """
     subprocess.run(
         ["pkill", "-f", "usbmuxd"],
         stdout=subprocess.DEVNULL,
@@ -52,7 +45,15 @@ class RequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/start":
 
             query = parse_qs(parsed.query)
+
+            ip = query.get("ip", [""])[0]
             pair_record_id = query.get("id", [""])[0]
+
+            if not ip:
+                return self.send_json({
+                    "success": False,
+                    "message": "Missing ip parameter"
+                }, 400)
 
             if USBMUXD_PROCESS and USBMUXD_PROCESS.poll() is None:
                 return self.send_json({
@@ -65,13 +66,14 @@ class RequestHandler(BaseHTTPRequestHandler):
             cmd = [
                 "usbmuxd",
                 "-c",
-                HOST,
+                ip,
                 "--pair-record-id",
                 pair_record_id,
                 "-d"
             ]
 
-            print(f"[+] Starting usbmuxd with pair-record-id='{pair_record_id}'")
+            print(f"[+] Starting usbmuxd -> {ip}")
+            print(f"[+] pair-record-id='{pair_record_id}'")
 
             USBMUXD_PROCESS = subprocess.Popen(
                 cmd,
@@ -83,7 +85,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             threading.Thread(
                 target=stream_output,
-                args=(USBMUXD_PROCESS.stdout,),
+                args=(USBMUXD_PROCESS.stdout, "[usbmuxd]"),
                 daemon=True,
             ).start()
 
@@ -92,6 +94,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             return self.send_json({
                 "success": True,
                 "pid": USBMUXD_PROCESS.pid,
+                "ip": ip,
                 "pair_record_id": pair_record_id,
             })
 
@@ -105,7 +108,10 @@ class RequestHandler(BaseHTTPRequestHandler):
                 print("[+] Stopping usbmuxd")
 
                 USBMUXD_PROCESS.terminate()
-                USBMUXD_PROCESS.wait(timeout=5)
+                try:
+                    USBMUXD_PROCESS.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    USBMUXD_PROCESS.kill()
 
                 USBMUXD_PROCESS = None
 
@@ -157,22 +163,70 @@ class RequestHandler(BaseHTTPRequestHandler):
             })
 
         #
-        # UNKNOWN ROUTE
+        # BACKUP DEVICE
         #
-        self.send_json({
+        elif parsed.path == "/backup":
+
+            query = parse_qs(parsed.query)
+            uid = query.get("uid", [""])[0]
+
+            if not uid:
+                return self.send_json({
+                    "success": False,
+                    "message": "Missing uid parameter"
+                }, 400)
+
+            os.makedirs(BACKUP_DIR, exist_ok=True)
+
+            cmd = [
+                "idevicebackup2",
+                "backup",
+                "-u",
+                uid,
+                "-n",
+                BACKUP_DIR
+            ]
+
+            print(f"[+] Starting backup for device: {uid}")
+
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+
+            threading.Thread(
+                target=stream_output,
+                args=(process.stdout, "[backup]"),
+                daemon=True,
+            ).start()
+
+            return self.send_json({
+                "success": True,
+                "message": "Backup started",
+                "uid": uid,
+                "backup_dir": BACKUP_DIR,
+                "pid": process.pid,
+            })
+
+        #
+        # NOT FOUND
+        #
+        return self.send_json({
             "error": "Not found"
         }, 404)
 
 
 if __name__ == "__main__":
 
-    print(f"[+] API server listening on port {PORT}")
+    print(f"[+] API server running on 0.0.0.0:{PORT}")
 
     server = HTTPServer(("0.0.0.0", PORT), RequestHandler)
 
     try:
         server.serve_forever()
-
     except KeyboardInterrupt:
-        print("\n[+] Shutting down server")
+        print("\n[+] Shutting down")
         server.server_close()
