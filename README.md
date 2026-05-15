@@ -4,7 +4,7 @@ A Docker-based tool for creating iOS device backups using `libimobiledevice` and
 
 ## Core Tools
 - [libimobiledevice](https://github.com/libimobiledevice/libimobiledevice)
-- [usbmuxd2](https://github.com/usbmuxd2/usbmuxd2)
+- [usbmuxd2](https://github.com/tihmstar/usbmuxd2)
 
 ## Overview
 
