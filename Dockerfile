@@ -2,11 +2,14 @@ FROM ubuntu:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Base Build Tools
+# 1. Base Build Tools + Every possible library these tools might scream for
 RUN apt update && apt install -y \
     build-essential pkg-config git autoconf automake libtool \
     libplist-dev libssl-dev libusb-1.0-0-dev libavahi-client-dev \
     libavahi-common-dev zlib1g-dev \
+    # The fix for libtatsu and general networking
+    libcurl4-openssl-dev \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp
@@ -19,7 +22,7 @@ RUN git clone https://github.com/tihmstar/libgeneral.git \
 RUN git clone https://github.com/libimobiledevice/libimobiledevice-glue.git \
     && cd libimobiledevice-glue && ./autogen.sh --prefix=/usr && make install
 
-# 4. Build libtatsu (The specific fix for your error)
+# 4. Build libtatsu
 RUN git clone https://github.com/libimobiledevice/libtatsu.git \
     && cd libtatsu && ./autogen.sh --prefix=/usr && make install
 
