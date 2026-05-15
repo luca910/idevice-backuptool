@@ -15,19 +15,23 @@ WORKDIR /tmp
 RUN git clone https://github.com/tihmstar/libgeneral.git \
     && cd libgeneral && ./autogen.sh --prefix=/usr && make install
 
-# 3. Build libimobiledevice-glue (Mandatory for newer builds)
+# 3. Build libimobiledevice-glue
 RUN git clone https://github.com/libimobiledevice/libimobiledevice-glue.git \
     && cd libimobiledevice-glue && ./autogen.sh --prefix=/usr && make install
 
-# 4. Build libusbmuxd (The "Package libusbmuxd-2.0 not found" fix)
+# 4. Build libtatsu (The specific fix for your error)
+RUN git clone https://github.com/libimobiledevice/libtatsu.git \
+    && cd libtatsu && ./autogen.sh --prefix=/usr && make install
+
+# 5. Build libusbmuxd
 RUN git clone https://github.com/libimobiledevice/libusbmuxd.git \
     && cd libusbmuxd && ./autogen.sh --prefix=/usr && make install
 
-# 5. Build libimobiledevice
+# 6. Build libimobiledevice
 RUN git clone https://github.com/libimobiledevice/libimobiledevice.git \
     && cd libimobiledevice && ./autogen.sh --prefix=/usr && make install && ldconfig
 
-# 6. Build usbmuxd2 (The actual wireless-capable daemon)
+# 7. Build usbmuxd2
 RUN git clone https://github.com/tihmstar/usbmuxd2.git \
     && cd usbmuxd2 \
     && git submodule update --init --recursive \
