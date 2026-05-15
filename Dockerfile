@@ -2,8 +2,7 @@ FROM ubuntu:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies
-RUN apt update && apt install -y \
+RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
     checkinstall \
@@ -16,18 +15,20 @@ RUN apt update && apt install -y \
     libimobiledevice-glue-dev \
     libtatsu-dev \
     libssl-dev \
+    libusb-1.0-0-dev \
     usbmuxd \
+    avahi-daemon \
+    avahi-utils \
+    libnss-mdns \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone and build libimobiledevice
 WORKDIR /opt
 
 RUN git clone https://github.com/libimobiledevice/libimobiledevice.git \
     && cd libimobiledevice \
     && ./autogen.sh \
-    && make -j$(nproc) \
+    && make -j"$(nproc)" \
     && make install \
     && ldconfig
 
-# Keep container alive and start usbmuxd
-CMD usbmuxd && tail -f /dev/null
+CMD ["usbmuxd", "-f"]
