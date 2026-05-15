@@ -2,14 +2,15 @@ FROM ubuntu:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Base Build Tools + Every possible library these tools might scream for
+# 1. Base Build Tools + Every possible library + CLANG
 RUN apt update && apt install -y \
     build-essential pkg-config git autoconf automake libtool \
     libplist-dev libssl-dev libusb-1.0-0-dev libavahi-client-dev \
     libavahi-common-dev zlib1g-dev \
-    # The fix for libtatsu and general networking
     libcurl4-openssl-dev \
     python3-dev \
+    # The fix for the "sorry, unimplemented" error
+    clang libc++-dev libc++abi-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp
@@ -34,11 +35,15 @@ RUN git clone https://github.com/libimobiledevice/libusbmuxd.git \
 RUN git clone https://github.com/libimobiledevice/libimobiledevice.git \
     && cd libimobiledevice && ./autogen.sh --prefix=/usr && make install && ldconfig
 
-# 7. Build usbmuxd2
+# 7. Build usbmuxd2 using Clang
+# We force CC and CXX to clang/clang++ to bypass the GCC bug
 RUN git clone https://github.com/tihmstar/usbmuxd2.git \
     && cd usbmuxd2 \
     && git submodule update --init --recursive \
-    && ./autogen.sh --prefix=/usr CXXFLAGS="-std=c++20 -fpermissive" \
+    && ./autogen.sh --prefix=/usr \
+       CC=clang CXX=clang++ \
+       CXXFLAGS="-std=c++20 -stdlib=libc++" \
+    && make -j$(nproc) \
     && make install
 
 RUN rm -rf /tmp/*
