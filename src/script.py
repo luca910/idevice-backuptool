@@ -2,7 +2,6 @@ import subprocess
 import threading
 import time
 import sys
-import re
 
 HOST = "10.110.10.45"
 
@@ -13,20 +12,6 @@ USBMUXD_CMD = [
     "--pair-record-id",
     "",
     "-d"
-]
-
-SUCCESS_PATTERNS = [
-    r"connected",
-    r"connection established",
-    r"tcp.*ok",
-    r"success",
-]
-
-FAIL_PATTERNS = [
-    r"connection refused",
-    r"failed",
-    r"error",
-    r"unable to connect",
 ]
 
 
@@ -40,31 +25,16 @@ def kill_existing_usbmuxd():
     print("[+] Killed existing usbmuxd instances")
 
 
-def monitor_output(pipe, result):
+def stream_output(pipe):
     """
-    Read usbmuxd output and detect success/failure.
+    Forward usbmuxd output to the main terminal.
     """
     for line in iter(pipe.readline, ""):
-        line = line.strip()
-        print(line)
-
-        lower = line.lower()
-
-        for pattern in SUCCESS_PATTERNS:
-            if re.search(pattern, lower):
-                result["success"] = True
-                return
-
-        for pattern in FAIL_PATTERNS:
-            if re.search(pattern, lower):
-                result["success"] = False
-                return
+        print(f"[usbmuxd] {line}", end="")
 
 
-def main():
-    kill_existing_usbmuxd()
-
-    print(f"[+] Starting usbmuxd connection to {HOST}")
+def start_usbmuxd():
+    print(f"[+] Starting usbmuxd -> {HOST}")
 
     process = subprocess.Popen(
         USBMUXD_CMD,
@@ -74,37 +44,57 @@ def main():
         bufsize=1,
     )
 
-    result = {"success": None}
-
-    monitor_thread = threading.Thread(
-        target=monitor_output,
-        args=(process.stdout, result),
+    threading.Thread(
+        target=stream_output,
+        args=(process.stdout,),
         daemon=True,
+    ).start()
+
+    return process
+
+
+def run_idevice_id():
+    print("[+] Running idevice_id -n")
+
+    result = subprocess.run(
+        ["idevice_id", "-n"],
+        capture_output=True,
+        text=True,
     )
 
-    monitor_thread.start()
+    if result.stdout.strip():
+        print("[+] Device(s) found:")
+        print(result.stdout.strip())
+        return True
 
-    timeout = 15
-    start = time.time()
+    print("[!] No devices found")
 
-    while time.time() - start < timeout:
-        if result["success"] is not None:
-            break
-        time.sleep(0.1)
+    if result.stderr.strip():
+        print(result.stderr.strip())
 
-    if result["success"] is True:
-        print("[+] usbmuxd TCP connection successful")
-        sys.exit(0)
+    return False
 
-    elif result["success"] is False:
-        print("[!] usbmuxd reported connection failure")
+
+def main():
+    kill_existing_usbmuxd()
+
+    process = start_usbmuxd()
+
+    # Let usbmuxd initialize
+    time.sleep(2)
+
+    success = run_idevice_id()
+
+    print("[+] usbmuxd is still running in background")
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n[+] Stopping usbmuxd")
         process.terminate()
-        sys.exit(1)
 
-    else:
-        print("[!] Timed out waiting for usbmuxd connection result")
-        process.terminate()
-        sys.exit(2)
+    sys.exit(0 if success else 1)
 
 
 if __name__ == "__main__":
