@@ -20,6 +20,22 @@ RUN apt update && apt install -y \
     libudev-dev \
     libdbus-1-dev \
     avahi-utils \
+    
+
+RUN apt-get install \
+	build-essential \
+	pkg-config \
+	checkinstall \
+	git \
+	autoconf \
+	automake \
+	libtool-bin \
+	libplist-dev \
+	libusbmuxd-dev \
+	libimobiledevice-dev \
+	libimobiledevice-glue-dev \
+	libusb-1.0-0-dev \
+	udev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp
