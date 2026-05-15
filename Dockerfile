@@ -2,39 +2,40 @@ FROM ubuntu:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Install all build tools and development headers
+# 1. Install dependencies for usbmuxd2 and its sub-libraries
 RUN apt update && apt install -y \
     build-essential \
     pkg-config \
-    checkinstall \
     git \
     autoconf \
     automake \
-    libtool-bin \
+    libtool \
     libplist-dev \
-    libusbmuxd-dev \
-    libimobiledevice-glue-dev \
-    libtatsu-dev \
     libssl-dev \
-    libavahi-client-dev \
-    libudev-dev \
-    libdbus-1-dev \
     libusb-1.0-0-dev \
-    avahi-utils \
-    udev \
+    libavahi-client-dev \
+    libavahi-common-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp
 
-# 2. Build usbmuxd 
-# Discovery is automatically included because libavahi-client-dev is present.
-RUN git clone https://github.com/tihmstar/usbmuxd2.git \
-    && cd usbmuxd2 \
-    && ./autogen.sh --prefix=/usr --with-udev \
+# 2. usbmuxd2 requires tihmstar's 'libgeneral' to build
+RUN git clone https://github.com/tihmstar/libgeneral.git \
+    && cd libgeneral \
+    && ./autogen.sh --prefix=/usr \
     && make -j$(nproc) \
     && make install
 
-# 3. Build libimobiledevice 
+# 3. Build usbmuxd2
+# Note: usbmuxd2 is often better at network discovery by default
+RUN git clone https://github.com/tihmstar/usbmuxd2.git \
+    && cd usbmuxd2 \
+    && git submodule update --init --recursive \
+    && ./autogen.sh --prefix=/usr \
+    && make -j$(nproc) \
+    && make install
+
+# 4. Build libimobiledevice (for tools like idevicebackup2)
 RUN git clone https://github.com/libimobiledevice/libimobiledevice.git \
     && cd libimobiledevice \
     && ./autogen.sh --prefix=/usr \
@@ -42,12 +43,12 @@ RUN git clone https://github.com/libimobiledevice/libimobiledevice.git \
     && make install \
     && ldconfig
 
-# 4. Cleanup
+# Cleanup
 RUN rm -rf /tmp/*
 
-# 5. Configs
+# Point to host DBus for Avahi communication
 ENV DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
 
-# Corrected CMD: No '&&' in exec form. 
-# -f keeps the container running.
-CMD ["usbmuxd2", "-f", "-v", "-u", "0"]
+# usbmuxd2 uses similar flags, but check 'usbmuxd2 --help' if it acts up
+# -f: foreground, -v: verbose
+CMD ["usbmuxd2", "-f", "-v"]
