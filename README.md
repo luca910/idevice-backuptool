@@ -105,10 +105,6 @@ This project aims to streamline the backup process through:
 - Check device connectivity before starting backups
 - Use `idevice_id -n` to troubleshoot wireless device visibility
 
-## License
-
-[Add your license here]
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
