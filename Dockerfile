@@ -2,11 +2,11 @@ FROM ubuntu:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Install ONLY the build tools and libraries. 
-# We do NOT install 'usbmuxd' via apt to avoid conflicts.
+# 1. Install all build tools and development headers
 RUN apt update && apt install -y \
     build-essential \
     pkg-config \
+    checkinstall \
     git \
     autoconf \
     automake \
@@ -19,37 +19,22 @@ RUN apt update && apt install -y \
     libavahi-client-dev \
     libudev-dev \
     libdbus-1-dev \
-    avahi-utils
-    
-
-RUN apt-get install -y\
-	build-essential \
-	pkg-config \
-	checkinstall \
-	git \
-	autoconf \
-	automake \
-	libtool-bin \
-	libplist-dev \
-	libusbmuxd-dev \
-	libimobiledevice-dev \
-	libimobiledevice-glue-dev \
-	libusb-1.0-0-dev \
-	udev \
+    libusb-1.0-0-dev \
+    avahi-utils \
+    udev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp
 
-# 2. Build usbmuxd with NETWORK enabled
-# This is the "brain" that handles the Wi-Fi discovery
-RUN git clone https://github.com/libimobiledevice/usbmuxd.git \
-    && cd usbmuxd \
-    && ./autogen.sh --prefix=/usr --enable-network --with-udev \
+# 2. Build usbmuxd 
+# Discovery is automatically included because libavahi-client-dev is present.
+RUN git clone https://github.com/tihmstar/usbmuxd2.git \
+    && cd usbmuxd2 \
+    && ./autogen.sh --prefix=/usr --with-udev \
     && make -j$(nproc) \
     && make install
 
 # 3. Build libimobiledevice 
-# This provides the actual backup tools (idevicebackup2, etc.)
 RUN git clone https://github.com/libimobiledevice/libimobiledevice.git \
     && cd libimobiledevice \
     && ./autogen.sh --prefix=/usr \
@@ -57,12 +42,12 @@ RUN git clone https://github.com/libimobiledevice/libimobiledevice.git \
     && make install \
     && ldconfig
 
-# 4. Cleanup build artifacts to keep image small
+# 4. Cleanup
 RUN rm -rf /tmp/*
 
 # 5. Configs
 ENV DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
 
-# We use -u 0 (root) because the 'usbmux' user won't exist 
-# since we didn't install the apt package.
-CMD ["usbmuxd", "-f", "-v", "-u", "0","&&","tail","-f","/dev/null"]
+# Corrected CMD: No '&&' in exec form. 
+# -f keeps the container running.
+CMD ["usbmuxd2", "-f", "-v", "-u", "0"]
