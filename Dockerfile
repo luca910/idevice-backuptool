@@ -32,21 +32,6 @@ RUN git clone https://github.com/libimobiledevice/libimobiledevice.git \
     && make install \
     && ldconfig
 
-# Install libimobiledevice tools for backups
-RUN git clone https://github.com/libimobiledevice/libimobiledevice-glue.git \
-    && cd libimobiledevice-glue \
-    && ./autogen.sh \
-    && make -j"$(nproc)" \
-    && make install \
-    && ldconfig
-
-RUN git clone https://github.com/libimobiledevice/ideviceinstaller.git \
-    && cd ideviceinstaller \
-    && ./autogen.sh \
-    && make -j"$(nproc)" \
-    && make install \
-    && ldconfig
-
 # Create supervisor config for managing services
 RUN mkdir -p /etc/supervisor/conf.d
 
