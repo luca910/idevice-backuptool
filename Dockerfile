@@ -39,7 +39,7 @@ RUN git clone https://github.com/libimobiledevice/libimobiledevice.git \
 
 # 7. Build usbmuxd2 (With Clang)
 RUN git clone https://github.com/fosple/usbmuxd2.git \
-    && cd /app/src/usbmuxd2 \
+    && cd usbmuxd2 \
     && ./autogen.sh \
     && ./configure CC=clang CXX=clang++ \
     && make \
