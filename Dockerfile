@@ -50,4 +50,4 @@ RUN rm -rf /tmp/*
 
 ENV DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
 
-CMD ["usbmuxd", "-v"]
+CMD ["tail", "-f", "/dev/null"]
