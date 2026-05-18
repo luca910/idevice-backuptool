@@ -26,6 +26,26 @@ def kill_existing_usbmuxd():
     )
 
 
+def monitor_backup_process(process, uid):
+    """Monitor backup process and stop usbmuxd when done"""
+    global USBMUXD_PROCESS
+    
+    # Wait for backup process to complete
+    process.wait()
+    
+    print(f"[+] Backup completed for device: {uid}")
+    
+    # Stop usbmuxd after backup is done
+    if USBMUXD_PROCESS and USBMUXD_PROCESS.poll() is None:
+        print("[+] Stopping usbmuxd after backup completion")
+        USBMUXD_PROCESS.terminate()
+        try:
+            USBMUXD_PROCESS.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            USBMUXD_PROCESS.kill()
+        USBMUXD_PROCESS = None
+
+
 class RequestHandler(BaseHTTPRequestHandler):
 
     def send_json(self, data, status=200):
@@ -200,6 +220,13 @@ class RequestHandler(BaseHTTPRequestHandler):
             threading.Thread(
                 target=stream_output,
                 args=(process.stdout, "[backup]"),
+                daemon=True,
+            ).start()
+
+            # Start a monitor thread that will stop usbmuxd when backup completes
+            threading.Thread(
+                target=monitor_backup_process,
+                args=(process, uid),
                 daemon=True,
             ).start()
 
