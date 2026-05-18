@@ -1,7 +1,5 @@
 FROM ubuntu:latest
 
-ENV DEBIAN_FRONTEND=noninteractive
-
 # 1. Install Base Tools + Every dependency + Clang
 RUN apt update && apt install -y \
     build-essential pkg-config git autoconf automake libtool \
@@ -50,4 +48,8 @@ RUN rm -rf /tmp/*
 
 ENV DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
 
-CMD ["tail", "-f", "/dev/null"]
+WORKDIR /app
+
+COPY ./src .
+
+CMD ["python3", "script.py"]
