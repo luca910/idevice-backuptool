@@ -89,29 +89,9 @@ idevicebackup2 backup /backup-path
 
 Once your device has been paired once over USB, you can use the REST API for programmatic backup management. The API runs on port 5000 inside the container.
 
-#### Starting the API Server
-
-```bash
-python3 src/script.py
-```
-
 #### API Endpoints
 
-**1. Get Device List**
-```bash
-curl http://localhost:5000/idevice_id
-```
-
-Response:
-```json
-{
-  "success": true,
-  "devices": ["device-uid-1", "device-uid-2"],
-  "stderr": ""
-}
-```
-
-**2. Start usbmuxd for Wireless Connection**
+**1. Start usbmuxd for Wireless Connection**
 ```bash
 curl "http://localhost:5000/start?ip=192.168.1.100&id=device-uid"
 ```
@@ -130,7 +110,7 @@ Response:
 }
 ```
 
-**3. Stop usbmuxd**
+**2. Stop usbmuxd**
 ```bash
 curl http://localhost:5000/stop
 ```
@@ -143,7 +123,7 @@ Response:
 }
 ```
 
-**4. Check usbmuxd Status**
+**3. Check usbmuxd Status**
 ```bash
 curl http://localhost:5000/status
 ```
@@ -155,7 +135,7 @@ Response:
 }
 ```
 
-**5. Start Backup**
+**4. Start Backup**
 ```bash
 curl "http://localhost:5000/backup?uid=device-uid"
 ```
@@ -177,21 +157,18 @@ Response:
 #### Example Workflow
 
 ```bash
-# 1. Get available devices
-curl http://localhost:5000/idevice_id
-
-# 2. Start usbmuxd for wireless connection
+# 1. Start usbmuxd for wireless connection
 curl "http://localhost:5000/start?ip=192.168.1.100&id=your-device-uid"
 
-# 3. Wait a moment for connection to establish
+# 2. Wait a moment for connection to establish
 sleep 2
 
-# 4. Start backup
+# 3. Start backup
 curl "http://localhost:5000/backup?uid=your-device-uid"
 
-# 5. Monitor the backup progress (logs appear in container output)
+# 4. Monitor the backup progress (logs appear in container output)
 
-# 6. Once backup completes, usbmuxd will automatically stop
+# 5. Once backup completes, usbmuxd will automatically stop
 ```
 
 ## Restoring Backups
