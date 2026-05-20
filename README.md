@@ -89,6 +89,10 @@ idevicebackup2 backup /backup-path
 
 Once your device has been paired once over USB, you can use the REST API for programmatic backup management. The API runs on port 5000 inside the container.
 
+#### Shortcuts Template
+
+[iCloud](https://www.icloud.com/shortcuts/acda9cd3de7b4f308d9f55902972064d)
+
 #### API Endpoints
 
 **1. Start usbmuxd for Wireless Connection**
