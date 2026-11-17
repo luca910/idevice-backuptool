@@ -1,0 +1,3 @@
+#!/bin/bash
+# Stub idevice_id: always reports one fake device.
+echo "000000stub-device-uid"

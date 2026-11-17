@@ -1,0 +1,7 @@
+#!/bin/bash
+# Stub idevicebackup2: writes a marker dir and exits 0 after a short run.
+echo "stub backup starting with args: $@" >&2
+sleep 3
+mkdir -p /var/folders/43/l3hjvmnj5_7_dlqh7dw925s80000gn/T/tmp.N3dvx8wEMD/backups/000000stub-device-uid
+echo "stub backup done" >&2
+exit 0
