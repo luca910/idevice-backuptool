@@ -6,6 +6,7 @@ services:
     privileged: true
     network_mode: host
     tty: true
+    restart: unless-stopped
     volumes:
       - /run/udev:/run/udev:ro
       - /var/run/dbus:/var/run/dbus:ro
@@ -15,3 +16,9 @@ services:
     #Persistence
       - /mnt/SSD/docker/idevice/lockdown:/var/lib/lockdown
       - /mnt/SSD/docker/idevice/backups:/mnt/backups
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/status', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3

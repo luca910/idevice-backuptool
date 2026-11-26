@@ -1,0 +1,8 @@
+#!/bin/bash
+# Stub usbmuxd: runs in foreground, logs, exits when killed.
+echo "stub usbmuxd started with args: $@" >&2
+if [ "$1" = "-c" ]; then
+  echo "connecting to $2 with pair record" >&2
+fi
+trap 'echo "stub usbmuxd terminating" >&2; exit 0' TERM INT
+while true; do sleep 1; done
